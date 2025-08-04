@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini Game Portal</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #141e30, #243b55);
+      color: #fff;
+      text-align: center;
+    }
+    input[type="text"], input[type="number"] {
+      font-size: 1rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+      background: #2e2e2e;
+      color: #fff;
+      width: 60%;
+      max-width: 300px;
+    }
+
+    header {
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 3rem;
+      color: #00ffe0;
+    }
+
+    .menu, .game-area {
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 30px;
+      background-color: #1f1f1f;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+    }
+
+    .menu button, .game-area button {
+      background: #00d4ff;
+      color: #000;
+      border: none;
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .menu button:hover, .game-area button:hover {
+      background: #00aacc;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #click-box {
+      width: 100px;
+      height: 100px;
+      background-color: #00ffcc;
+      position: absolute;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    footer {
+      margin-top: 50px;
+      font-size: 0.9rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎮 Mini Game Portal</h1>
+    <p>Choose a game and beat your high score!</p>
+  </header>
+
+  <div class="menu" id="main-menu">
+    <button onclick="showGame('clickBox')">Click the Box</button>
+    <button onclick="showGame('reactionGame')">Reaction Game</button>
+    <button onclick="showGame('mathRace')">Math Quiz Race</button>
+  </div>
+
+  <!-- Click the Box -->
+  <div class="game-area hidden" id="clickBox">
+    <h2>Click the Box</h2>
+    <label>Your Name:</label>
+    <input type="text" id="playerName" placeholder="Enter name" />
+    <div id="click-box"></div>
+    <div>Score: <span id="click-score">0</span></div>
+    <div>Time Left: <span id="click-timer">30</span> sec</div>
+    <button onclick="startClickGame()">Start</button>
+    <button onclick="goHome()">Back to Menu</button>
+    <button onclick="rematchClickGame()" id="rematchBtn" style="display:none;">Rematch</button>
+    <button onclick="resetLeaderboard()">Reset Leaderboard</button>
+    <h3>🏆 Leaderboard</h3>
+    <ol id="leaderboard"></ol>
+  </div>
+
+  <!-- Reaction Game -->
+  <div class="game-area hidden" id="reactionGame">
+    <h2>Reaction Game</h2>
+    <div id="reaction-status">Click "Start" and wait for GO!</div>
+    <button id="reaction-button" disabled>Click me!</button>
+    <div>Best Time: <span id="reaction-best">—</span></div>
+    <button onclick="startReactionGame()">Start</button>
+    <button onclick="goHome()">Back to Menu</button>
+  </div>
+
+  <!-- Math Quiz Race -->
+  <div class="game-area hidden" id="mathRace">
+    <h2>🧠 Math Quiz Race</h2>
+    <label>Your Name:</label>
+    <input type="text" id="mathName" placeholder="Enter name" />
+    <div id="math-question" style="margin: 20px; font-size: 1.5rem;"></div>
+    <input type="number" id="math-answer" placeholder="Your answer" />
+    <button onclick="submitAnswer()">Submit</button>
+    <div>Score: <span id="math-score">0</span></div>
+    <div>Time Left: <span id="math-timer">30</span> sec</div>
+    <button onclick="startMathRace()">Start</button>
+    <button onclick="goHome()">Back to Menu</button>
+    <h3>📈 Score History</h3>
+    <ul id="math-history"></ul>
+  </div>
+
+  <footer>
+    &copy; 2025 Game Portal Inc.
+  </footer>
+
+<script>
+  // General Navigation
+  function showGame(gameId) {
+    document.getElementById('main-menu').classList.add('hidden');
+    document.querySelectorAll('.game-area').forEach(el => el.classList.add('hidden'));
+    document.getElementById(gameId).classList.remove('hidden');
+  }
+
+  function goHome() {
+    document.getElementById('main-menu').classList.remove('hidden');
+    document.querySelectorAll('.game-area').forEach(el => el.classList.add('hidden'));
+  }
+
+  // Click the Box Game
+  let clickScore = 0, clickTime = 30, intervalSpeed = 1000;
+  let boxInterval, countdown;
+  const clickBox = document.getElementById('click-box');
+  const clickScoreDisplay = document.getElementById('click-score');
+  const clickTimerDisplay = document.getElementById('click-timer');
+  const playerNameInput = document.getElementById('playerName');
+  const leaderboardList = document.getElementById('leaderboard');
+  const rematchBtn = document.getElementById('rematchBtn');
+  let playerName = '';
+
+  function getLeaderboard() {
+    return JSON.parse(localStorage.getItem('clickLeaderboard')) || [];
+  }
+
+  function updateLeaderboard(name, score) {
+    const board = getLeaderboard();
+    board.push({ name, score });
+    board.sort((a, b) => b.score - a.score);
+    localStorage.setItem('clickLeaderboard', JSON.stringify(board.slice(0, 5)));
+    renderLeaderboard();
+  }
+
+  function renderLeaderboard() {
+    const board = getLeaderboard();
+    leaderboardList.innerHTML = '';
+    board.forEach(entry => {
+      const li = document.createElement('li');
+      li.textContent = `${entry.name}: ${entry.score}`;
+      leaderboardList.appendChild(li);
+    });
+  }
+
+  function moveBox() {
+    if (document.getElementById('clickBox').classList.contains('hidden')) return;
+    const x = Math.floor(Math.random() * 500);
+    const y = Math.floor(Math.random() * 300);
+    clickBox.style.left = x + 'px';
+    clickBox.style.top = y + 'px';
+  }
+
+  clickBox.addEventListener('click', () => {
+    clickScore++;
+    clickScoreDisplay.textContent = clickScore;
+  });
+
+  function startClickGame() {
+    playerName = playerNameInput.value.trim();
+    if (!playerName) return alert("Enter your name!");
+
+    clickScore = 0;
+    clickTime = 30;
+    intervalSpeed = 1000;
+    clickScoreDisplay.textContent = "0";
+    clickTimerDisplay.textContent = "30";
+    rematchBtn.style.display = 'none';
+    renderLeaderboard();
+
+    moveBox();
+    clearInterval(boxInterval);
+    clearInterval(countdown);
+
+    boxInterval = setInterval(moveBox, intervalSpeed);
+    countdown = setInterval(() => {
+      clickTime--;
+      clickTimerDisplay.textContent = clickTime;
+
+      if (clickTime === 20) updateSpeed(700);
+      if (clickTime === 10) updateSpeed(500);
+      if (clickTime <= 0) endGame();
+    }, 1000);
+  }
+
+  function updateSpeed(newSpeed) {
+    clearInterval(boxInterval);
+    intervalSpeed = newSpeed;
+    boxInterval = setInterval(moveBox, intervalSpeed);
+  }
+
+  function endGame() {
+    clearInterval(boxInterval);
+    clearInterval(countdown);
+    alert(`${playerName}, your score: ${clickScore}`);
+    updateLeaderboard(playerName, clickScore);
+    rematchBtn.style.display = 'inline-block';
+  }
+
+  function rematchClickGame() {
+    startClickGame();
+  }
+
+  function resetLeaderboard() {
+    if (confirm("Clear the leaderboard?")) {
+      localStorage.removeItem('clickLeaderboard');
+      renderLeaderboard();
+    }
+  }
+
+  // Math Quiz Race
+  let mathScore = 0;
+  let mathTime = 30;
+  let mathInterval;
+  let currentAnswer = 0;
+
+  const mathNameInput = document.getElementById('mathName');
+  const mathQuestion = document.getElementById('math-question');
+  const mathAnswer = document.getElementById('math-answer');
+  const mathScoreDisplay = document.getElementById('math-score');
+  const mathTimerDisplay = document.getElementById('math-timer');
+  const mathHistory = document.getElementById('math-history');
+
+  function startMathRace() {
+    const name = mathNameInput.value.trim();
+    if (!name) return alert("Enter your name!");
+
+    mathScore = 0;
+    mathTime = 30;
+    mathScoreDisplay.textContent = "0";
+    mathTimerDisplay.textContent = "30";
+    mathAnswer.value = '';
+    generateQuestion();
+
+    clearInterval(mathInterval);
+    mathInterval = setInterval(() => {
+      mathTime--;
+      mathTimerDisplay.textContent = mathTime;
+      if (mathTime <= 0) {
+        clearInterval(mathInterval);
+        endMathGame(name, mathScore);
+      }
+    }, 1000);
+  }
+
+  function generateQuestion() {
+    const a = Math.floor(Math.random() * 10) + 1;
+    const b = Math.floor(Math.random() * 10) + 1;
+    currentAnswer = a + b;
+    mathQuestion.textContent = `What is ${a} + ${b}?`;
+  }
+
+  function submitAnswer() {
+    const val = parseInt(mathAnswer.value);
+    if (val === currentAnswer) {
+      mathScore++;
+      mathScoreDisplay.textContent = mathScore;
+    }
+    mathAnswer.value = '';
+    generateQuestion();
+  }
+
+  function endMathGame(name, score) {
+    alert(`${name}, your final score: ${score}`);
+    saveMathHistory(name, score);
+    renderMathHistory();
+  }
+
+  function saveMathHistory(name, score) {
+    const history = JSON.parse(localStorage.getItem('mathHistory')) || [];
+    history.push({ name, score, time: new Date().toLocaleString() });
+    localStorage.setItem('mathHistory', JSON.stringify(history));
+  }
+
+  function renderMathHistory() {
+    const history = JSON.parse(localStorage.getItem('mathHistory')) || [];
+    mathHistory.innerHTML = '';
+    history.slice(-10).reverse().forEach(entry => {
+      const li = document.createElement('li');
+      li.textContent = `${entry.time} - ${entry.name}: ${entry.score}`;
+      mathHistory.appendChild(li);
+    });
+  }
+
+  renderMathHistory(); // Load on page load
+
+  // Reaction Game
+  let reactionStartTime = 0;
+  let reactionTimeout;
+  let bestReactionTime = localStorage.getItem('bestReactionTime') || null;
+
+  const reactionButton = document.getElementById('reaction-button');
+  const reactionStatus = document.getElementById('reaction-status');
+  const reactionBestDisplay = document.getElementById('reaction-best');
+
+  if (bestReactionTime) {
+    reactionBestDisplay.textContent = `${bestReactionTime} ms`;
+  }
+
+  function startReactionGame() {
+    reactionStatus.textContent = "Wait for GO...";
+    reactionButton.disabled = true;
+    reactionButton.style.backgroundColor = "#00d4ff";
+    reactionStartTime = 0;
+
+    const delay = Math.floor(Math.random() * 3000) + 2000; // 2–5 sec
+    clearTimeout(reactionTimeout);
+
+    reactionTimeout = setTimeout(() => {
+      reactionStatus.textContent = "GO!";
+      reactionStartTime = Date.now();
+      reactionButton.disabled = false;
+      reactionButton.style.backgroundColor = "#00ff88";
+    }, delay);
+  }
+
+  reactionButton.addEventListener('click', () => {
+    if (reactionStartTime === 0) {
+      reactionStatus.textContent = "Too soon! Wait for GO!";
+      reactionButton.disabled = true;
+      reactionButton.style.backgroundColor = "#ff4444";
+      clearTimeout(reactionTimeout);
+      return;
+    }
+
+    const reactionTime = Date.now() - reactionStartTime;
+    reactionStatus.textContent = `Your time: ${reactionTime} ms`;
+    reactionButton.disabled = true;
+    reactionButton.style.backgroundColor = "#00d4ff";
+
+    if (!bestReactionTime || reactionTime < bestReactionTime) {
+      bestReactionTime = reactionTime;
+      localStorage.setItem('bestReactionTime', bestReactionTime);
+      reactionBestDisplay.textContent = `${bestReactionTime} ms`;
+    }
+  });
+</script>
+</body>
+</html>
+
