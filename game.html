@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
   <title>Mini Game Portal</title>
   <style>
     body {
@@ -11,6 +13,30 @@
       color: #fff;
       text-align: center;
     }
+    body {
+  font-size: 16px;
+  padding: 10px;
+}
+    button {
+  padding: 18px 36px;
+  font-size: 1.2rem;
+}
+input {
+  font-size: 1.1rem;
+  width: 80%;
+}
+
+
+.menu, .game-area {
+  width: 90%;
+  max-width: 600px;
+}
+
+#click-box {
+  width: 80px;
+  height: 80px;
+}
+
     input[type="text"], input[type="number"] {
       font-size: 1rem;
       padding: 8px 12px;
@@ -297,6 +323,9 @@
     mathAnswer.value = '';
     generateQuestion();
   }
+  const maxX = window.innerWidth - 120;
+const maxY = window.innerHeight - 250;
+
 
   function endMathGame(name, score) {
     alert(`${name}, your final score: ${score}`);
